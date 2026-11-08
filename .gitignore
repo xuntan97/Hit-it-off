@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 密钥与运行时产物（永远不要提交真实 key）
+config.json
+.env
+*.log
+.last-frame
+.serial
+.upload.log
+.cache/
+epd-out/
+.build/
+
+# 编辑器
+.vscode/
+.idea/

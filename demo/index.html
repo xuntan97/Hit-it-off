@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>一触即合 · Hit it off</title>
+<meta name="description" content="一块 AI 文化身份徽章：碰人获得话题，碰城收藏故事。">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#" id="brand">
+    <span class="brand-mark">合</span>
+    <span class="brand-text">
+      <strong>一触即合</strong>
+      <em>Hit it off</em>
+    </span>
+  </a>
+
+  <nav class="nav" id="nav" hidden>
+    <button class="nav-item" data-view="identity">我的身份</button>
+    <button class="nav-item" data-view="beasts">我的瑞兽<span class="nav-count" id="nav-count">0</span></button>
+  </nav>
+
+  <div class="topbar-end">
+    <span class="stage-note" id="stage-note">尚未立名</span>
+    <button class="ghost-btn" id="restart" hidden>重新立名</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- 卷一 · 立名 -->
+  <section class="screen" id="screen-create">
+    <div class="create">
+      <header class="screen-head">
+        <p class="eyebrow">卷一 · 立名</p>
+        <h1>先让自己被看见</h1>
+        <p class="lede">选几个标签，写下一个名字。剩下的，交给卡面。</p>
+      </header>
+
+      <div class="create-body">
+        <div class="photo-col">
+          <p class="field-label">一张照片</p>
+          <label class="photo-drop has-photo" id="photo-drop">
+            <input type="file" id="photo" accept="image/*" hidden>
+            <img id="photo-preview" src="assets/photo-me.jpg" alt="">
+            <div class="photo-empty" id="photo-empty" hidden>
+              <span class="photo-plus">＋</span>
+              <span class="photo-tip">上传你的照片</span>
+              <span class="photo-sub">用于生成卡面插画</span>
+            </div>
+            <span class="photo-change" id="photo-change">换一张</span>
+          </label>
+          <p class="field-note">照片只用于画这张卡，不保存。</p>
+        </div>
+
+        <div class="form-col">
+          <div class="row-3">
+            <div class="field">
+              <label class="field-label" for="nickname">昵称</label>
+              <input id="nickname" maxlength="12" value="谈轩庭" placeholder="卡片上的名字" autocomplete="off">
+            </div>
+            <div class="field">
+              <label class="field-label" for="mbti">MBTI</label>
+              <div class="select-wrap"><select id="mbti"></select></div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="zodiac">星座</label>
+              <div class="select-wrap"><select id="zodiac"></select></div>
+            </div>
+          </div>
+
+          <div class="row-2">
+            <div class="field">
+              <label class="field-label" for="occupation">职业</label>
+              <input id="occupation" maxlength="12" list="occupation-list"
+                     value="艺术家" placeholder="医生 / 学生 / 自由职业" autocomplete="off">
+              <datalist id="occupation-list">
+                <option value="学生"><option value="程序员"><option value="设计师">
+                <option value="医生"><option value="老师"><option value="产品经理">
+                <option value="研究员"><option value="自由职业"><option value="创业者">
+                <option value="律师"><option value="金融"><option value="运营">
+                <option value="工程师"><option value="艺术家">
+              </datalist>
+            </div>
+            <div class="field">
+              <div class="field-head">
+                <span class="field-label">再说一句</span>
+                <span class="field-count" id="note-count">15 / 30</span>
+              </div>
+              <input id="note" maxlength="30" value="我喜欢发挥想象力，喜欢挑战未知"
+                     placeholder="开心大方，喜欢在雨天喝茶" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <span class="field-label">卡面风格</span>
+              <span class="field-note">决定画面气质</span>
+            </div>
+            <div class="tags" id="style-tags"></div>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <span class="field-label">兴趣</span>
+              <span class="field-count" id="interest-count">已选 3 / 6</span>
+            </div>
+            <div class="interest-groups" id="interest-groups"></div>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <span class="field-label">同行伙伴</span>
+              <span class="field-note">会一起出现在卡面里</span>
+            </div>
+            <div class="tags" id="pet-tags"></div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="create-foot">
+        <button class="btn btn-primary btn-lg" id="generate">生成我的人物卡</button>
+        <p class="field-note">三个模型同时画同一段描述，谁先画完谁先能选。</p>
+      </footer>
+    </div>
+  </section>
+
+  <!-- 卷二 · 结缘 -->
+  <section class="screen" id="screen-identity" hidden>
+    <div class="wrap">
+      <header class="screen-head">
+        <p class="eyebrow">卷二 · 结缘</p>
+        <h1 id="identity-title">你的身份，在这里</h1>
+        <p class="lede">陌生人第一次看到你，是这张卡、这只瑞兽，和一句今天适合做的事。</p>
+      </header>
+
+      <div class="identity-grid">
+        <div class="identity-main">
+          <div id="id-card"></div>
+        </div>
+
+        <aside class="identity-side">
+          <section class="panel">
+            <div class="panel-head">
+              <p class="eyebrow">当前同行</p>
+              <button class="text-btn" id="go-beasts">去图鉴更换 →</button>
+            </div>
+            <div id="id-beast"></div>
+          </section>
+
+          <section class="panel">
+            <p class="eyebrow">写入硬件</p>
+            <div class="sync" id="id-sync"></div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- 卷三 · 图鉴 -->
+  <section class="screen" id="screen-beasts" hidden>
+    <div class="wrap">
+      <header class="screen-head">
+        <p class="eyebrow">卷三 · 图鉴</p>
+        <h1>我的瑞兽</h1>
+        <p class="lede">已收藏的排在前面。它们不是奖励，是你在什么地方、和谁相遇过的证据。</p>
+      </header>
+
+      <div class="beast-head">
+        <span class="beast-count" id="beast-count">0 / 7</span>
+        <span class="field-note">点击任意一只，查看来历</span>
+      </div>
+
+      <div class="beast-grid" id="beast-grid"></div>
+    </div>
+  </section>
+
+</main>
+
+<div class="dock" id="dock" hidden>
+  <button class="dock-btn" id="btn-meet">相遇 · 人</button>
+  <button class="dock-btn" id="btn-culture">相遇 · 文</button>
+</div>
+
+<div class="modal-layer" id="modal-layer" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+</div>
+
+<div class="takeover" id="takeover" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<!-- 选图：三个模型同画一张，谁先出来谁先能点 -->
+<div class="picker" id="picker" hidden>
+  <div class="pk">
+    <header class="pk-head">
+      <p class="pk-kicker">一触即合 · 选一张</p>
+      <h2 class="pk-title">三个模型，同一个你</h2>
+      <div class="pk-chips" id="pk-chips"></div>
+    </header>
+    <div class="pk-grid" id="pk-grid"></div>
+    <p class="pk-foot" id="pk-foot">三张一起在画，先出来的可以先选</p>
+  </div>
+</div>
+
+<script src="board-frames.js"></script>
+<script src="pick-frames.js"></script>
+<script src="board.js?v=20261107f"></script>
+<script src="app.js?v=20261107f"></script>
+</body>
+</html>

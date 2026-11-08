@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>一触即合 · 板子连接自检</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ink: #22302A;
+    --muted: #7C8A80;
+    --line: #E4E9E2;
+    --paper: #FBFCF9;
+    --green: #4E7A5C;
+    --amber: #8C7B4A;
+    --red: #A2564C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 20px 60px;
+    background: var(--paper);
+    color: var(--ink);
+    font: 14px/1.7 -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 20px; font-weight: 600; letter-spacing: .02em; }
+  .sub { margin: 0 0 26px; color: var(--muted); font-size: 13px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  h2 { margin: 0 0 12px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .08em; }
+  .row {
+    display: grid;
+    grid-template-columns: 148px 1fr;
+    gap: 10px;
+    padding: 9px 0;
+    border-top: 1px dashed var(--line);
+    align-items: start;
+  }
+  .row:first-of-type { border-top: 0; }
+  .k { color: var(--muted); font-size: 12.5px; }
+  .v { font-size: 12.5px; word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .ok { color: var(--green); }
+  .no { color: var(--red); }
+  .warn { color: var(--amber); }
+  .verdict { font-size: 13px; line-height: 1.9; }
+  .verdict li { margin: 4px 0; }
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+  button {
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 9px 18px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button.primary { background: var(--green); border-color: var(--green); color: #fff; }
+  button.danger { color: var(--red); border-color: #E7D4D0; }
+  button:disabled { opacity: .5; cursor: default; }
+  pre {
+    margin: 0;
+    padding: 12px 14px;
+    background: #F6F8F5;
+    border-radius: 10px;
+    font-size: 11.5px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 260px;
+    overflow: auto;
+  }
+  .tip { margin-top: 12px; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>板子连接自检</h1>
+  <p class="sub">先在电脑上连热点 <b>HitItOff</b>（密码 hititoff），再打开这一页。所有结果都会留在页面上，可以直接截图。</p>
+
+  <div class="card">
+    <h2>逐项探测</h2>
+    <div id="probes"><div class="row"><div class="k">等待</div><div class="v">正在探测…</div></div></div>
+    <div class="btns">
+      <button class="primary" id="again">重新探测</button>
+      <button id="copy">复制结果</button>
+      <button class="danger" id="whiteframe">发一帧纯白到板上</button>
+    </div>
+    <p class="tip">最后那个按钮会真的往板子上写一页纯白，用来判断「帧到底能不能落到板子」。写完屏幕变白＝链路是通的，只是网页读不到回执；屏幕没变＝帧没进去。</p>
+  </div>
+
+  <div class="card">
+    <h2>结论</h2>
+    <div class="verdict" id="verdict">探测中…</div>
+  </div>
+
+  <div class="card">
+    <h2>原始记录</h2>
+    <pre id="raw">(空)</pre>
+  </div>
+</div>
+
+<script>
+const BASE = "http://192.168.50.1";
+const HEAD = 4;
+const SLOT_BYTES = 400 * 300 / 8;
+
+const rows = [];
+const log = [];
+
+function push(name, value, cls) {
+  rows.push({ name, value, cls });
+  paint();
+}
+
+function paint() {
+  const box = document.getElementById("probes");
+  box.innerHTML = rows.map((r) =>
+    `<div class="row"><div class="k">${r.name}</div><div class="v ${r.cls || ""}">${r.value}</div></div>`
+  ).join("");
+  document.getElementById("raw").textContent =
+    log.length ? log.join("\n") : "(空)";
+}
+
+/* 一次带超时的 fetch，把「HTTP 状态」和「读不到」区分开 */
+async function probe(label, path, opts = {}, timeout = 6000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout);
+  const t0 = performance.now();
+  try {
+    const res = await fetch(BASE + path, { ...opts, cache: "no-store", signal: ctrl.signal });
+    const ms = Math.round(performance.now() - t0);
+    let text = "";
+    try { text = await res.text(); } catch (e) { text = "(正文读不出来)"; }
+    const body = text.replace(/\s+/g, " ").trim().slice(0, 160);
+    log.push(`${label}  ${opts.method || "GET"} ${path}  →  ${res.status} ${res.statusText}  ${ms}ms  body="${body}"`);
+    return { ok: true, status: res.status, text, ms };
+  } catch (err) {
+    const ms = Math.round(performance.now() - t0);
+    const reason = err.name === "AbortError" ? "超时（板子没回）" : `${err.name}: ${err.message}`;
+    log.push(`${label}  ${opts.method || "GET"} ${path}  →  读不到：${reason}  ${ms}ms`);
+    return { ok: false, status: 0, text: "", ms, reason };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function run() {
+  rows.length = 0;
+  log.length = 0;
+  document.getElementById("verdict").textContent = "探测中…";
+  const out = {};
+
+  push("GET /ping", "…");
+  out.ping = await probe("ping", "/ping", {}, 5000);
+  push("GET /ping", describe(out.ping), cls(out.ping));
+
+  push("GET /state", "…");
+  out.state = await probe("state", "/state", {}, 5000);
+  push("GET /state", describe(out.state), cls(out.state));
+
+  push("GET /", "…");
+  out.index = await probe("index", "/", {}, 5000);
+  push("GET /", describe(out.index), cls(out.index));
+
+  push("POST /frame（3 字节）", "…");
+  out.frame = await probe("frame", "/frame", {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: new Uint8Array([0, 1, 0, 0]),
+  }, 6000);
+  push("POST /frame（3 字节）", describe(out.frame), cls(out.frame));
+
+  verdict(out);
+}
+
+function describe(r) {
+  if (!r.ok) return `读不到 · ${r.reason} · ${r.ms}ms`;
+  if (!r.text.trim()) return `HTTP ${r.status} · 正文是空的 · ${r.ms}ms`;
+  return `HTTP ${r.status} · "${r.text.trim().slice(0, 80)}" · ${r.ms}ms`;
+}
+
+function cls(r) { return r.ok && r.status < 400 ? "ok" : "no"; }
+
+function verdict(o) {
+  const lines = [];
+  const canRead = o.ping.ok || o.state.ok || o.index.ok;
+
+  lines.push(canRead
+    ? "✅ 网页能读到板子的响应（固件带 CORS 头）。"
+    : "⚠️ 网页读不到板子的任何响应。请求其实发出去了，是浏览器不让页面看结果 —— 这块固件没带 CORS 头，所以「读回执」这条路在它上面不存在。");
+
+  if (o.state.ok && o.state.text.trim()) {
+    const t = o.state.text.trim();
+    if (/pages\s*=/.test(t)) {
+      lines.push(`✅ /state 正常：${t}`);
+    } else {
+      lines.push(`⚠️ /state 返回的不是状态行："${t.slice(0, 60)}"（固件可能是更早的版本）。`);
+    }
+  } else if (o.state.ok && !o.state.text.trim()) {
+    lines.push("❌ /state 返回 200 但正文是空的 —— 这台固件没有实现 /state（源码里有，板子上烧的是旧版）。");
+  } else {
+    lines.push("❌ 读不到 /state（旧固件没有这个路由，或者不带 CORS 头）。");
+  }
+
+  if (o.frame.ok) {
+    if (o.frame.status === 400) {
+      lines.push("✅ /frame 路由在：故意发 3 个字节被 400 拒了，说明它认得这个接口、也会回话。");
+    } else if (o.frame.status < 400) {
+      lines.push(`⚠️ /frame 对 3 字节的请求回了 ${o.frame.status} —— 居然没拒，说明这块固件不校验长度。`);
+    } else {
+      lines.push(`❌ /frame 回了 HTTP ${o.frame.status}。`);
+    }
+  } else {
+    lines.push("❌ /frame 也读不到响应。路由可能在、只是不带 CORS 头，也可能是这块固件根本没有 /frame —— 靠下面那个「发一帧纯白」就能区分。");
+  }
+
+  document.getElementById("verdict").innerHTML =
+    "<ul>" + lines.map((l) => `<li>${l}</li>`).join("") + "</ul>";
+}
+
+async function sendWhiteFrame() {
+  if (!confirm("会真的往板子第 0 页写一帧纯白，屏幕上现在的内容会被冲掉。继续？")) return;
+  const btn = document.getElementById("whiteframe");
+  btn.disabled = true;
+  const body = new Uint8Array(HEAD + SLOT_BYTES);
+  body[0] = 0;                 // slot 0 = 人物卡那页
+  body[1] = 1;                 // pages
+  body[2] = 0;                 // 立刻显示第 0 页
+  body[3] = 0;
+  body.fill(0xFF, HEAD);       // 1bpp 全 1 = 白
+
+  const r = await probe("white-frame", "/frame", {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body,
+  }, 15000);
+  push("POST /frame（整帧 15004 字节）", describe(r), cls(r));
+
+  const after = await probe("state-after", "/state", {}, 5000);
+  push("POST 之后 GET /state", describe(after), cls(after));
+  document.getElementById("verdict").innerHTML =
+    "<ul><li><b>看屏幕：</b>变白了 → 帧确实落到板子上，问题只在「网页读不到回执」；" +
+    "没变 → 帧压根没进去，问题在固件或传输这一段。</li></ul>";
+  btn.disabled = false;
+}
+
+document.getElementById("again").addEventListener("click", run);
+document.getElementById("whiteframe").addEventListener("click", sendWhiteFrame);
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = rows.map((r) => `${r.name}: ${r.value}`).join("\n") + "\n\n" + log.join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    document.getElementById("copy").textContent = "已复制";
+    setTimeout(() => (document.getElementById("copy").textContent = "复制结果"), 1500);
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+  }
+});
+
+run();
+</script>
+</body>
+</html>
